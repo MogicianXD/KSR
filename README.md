@@ -2,15 +2,15 @@
 
 For our paper, we adjust some of the pattern.
 
-- Instead of **mini-batch** which GRU4rec and the origin KSR uses, We adopts "**data argument**", the same as SR-GNN, STAMP, etc. (use [0:k] for k in range(1, len(session)) for train, and [k] for target).
-- On our dataset, we found that **NLL** loss performs better than KSR with BPR loss, contrary to the origin. Here, we provide **BPR** codes with NLL codes annotated.
+- Instead of **mini-batch** which GRU4rec and the original KSR uses, We adopts "**data augmentation**", the same as SR-GNN, STAMP, etc. (use [0:k] for k in range(1, len(session)) for train, and [k] for target).
+- On our dataset, we found that **NLL** loss performs better than KSR with BPR loss, contrary to the original. Here, we provide **BPR** codes with NLL codes annotated.
 - You need to adjust the **dataset path**. Ours is "../benchmarks/kg_month15/A/"
 
 ### Attention
 
-- It's not necessary to pretrain embbeding (emb can be updated when backwarding, different from the origin code) . Thus, we **randomly generate embbeding** based on normal distribution (default for item emb). Kg emb pretrained with trans-E, we get a faster loss convergence with metrics higher a bit. However, we still use the origin code to read local embedding files,  you should also generate three embedding files, of which the format is not different.
+- It's not necessary to pretrain embbeding (emb can be updated when backwarding, different from the original code) . Thus, we **randomly generate embbeding** based on normal distribution (default for item emb). Kg emb pretrained with trans-E, we get a faster loss convergence with metrics higher a bit. However, we still use the original code to read local embedding files,  you should also generate three embedding files, of which the format is not different from [the original]( https://github.com/BetsyHJ/KSR/tree/master/data ).
 - To speed up, we only train when epoch <= 40; model is saved when epoch > 50 and it obtains the highest MRR@20. You can alter this in the method "fit".
-- As the origin version filters out items in test data which not exist in train data (the same way as GRU4rec), we follow it. But metrics is divided by the sum of  unfiltered test sessions. You can revise it in evaluation.py.
+- As the original version filters out items in test data which not exist in train data (the same way as GRU4rec), we follow it. But metrics is divided by the sum of  unfiltered test sessions. You can revise it in evaluation.py.
 
 ### Args
 
