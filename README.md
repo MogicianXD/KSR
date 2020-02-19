@@ -15,25 +15,42 @@ For our paper, we adjust some of the pattern.
 ### Args
 
 optional arguments:
-  -h, --help            show this help message and exit
-  --data DATA           dataset folder name under ../benchmarks
-  --type TYPE           our dataset is divided
-  --epochs EPOCHS       Number of epochs.
-  --batch_size BATCH_SIZE
-                        Batch size.
-  --dropout DROPOUT     Dropout rate.
-  --out_dim OUT_DIM     Embedding size of output.
-  --num_neg NUM_NEG     Number of negative instances to pair with a positive instance.
-  --lr LR               Learning rate.
-  --activation [ACTIVATION] Specify activation function: sigmoid, relu, tanh, identity
-  --momentum MOMENTUM   Momentum as hyperprameter.
-  --argument            use the method called "data argument" if true
-  --retrain             use kg emb, the pretrained output of OpenKE (trans-E)
-  --reload              restore saved params if true
-  --eval                only eval once, non-train
-  --save                if save model or not
-  --savepath SAVEPATH   for customization
-  --cuda CUDA           gpu No.
+
+-h, --help            show this help message and exit
+
+--data DATA           dataset folder name under ../benchmarks
+
+--type TYPE           our dataset is divided
+
+--epochs EPOCHS       Number of epochs.
+
+--batch_size BATCH_SIZE	Batch size.
+
+--dropout DROPOUT     Dropout rate.
+
+--out_dim OUT_DIM     Embedding size of output.
+
+--num_neg NUM_NEG     Number of negative instances to pair with a positive instance.
+
+--lr LR               Learning rate.
+
+--activation [ACTIVATION] Specify activation function: sigmoid, relu, tanh, identity
+
+--momentum MOMENTUM   Momentum as hyperprameter.
+
+--argument            use the method called "data argument" if true
+
+--retrain             use kg emb, the pretrained output of OpenKE (trans-E)
+
+--reload              restore saved params if true
+
+--eval                only eval once, non-train
+
+--save                if save model or not
+
+--savepath SAVEPATH   for customization
+
+--cuda CUDA           gpu No.
 
 
 
