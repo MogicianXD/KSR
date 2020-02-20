@@ -8,9 +8,23 @@ For our paper, we adjust some of the pattern.
 
 ### Attention
 
-- It's not necessary to pretrain embbeding (emb can be updated when backwarding, different from the original code) . Thus, we **randomly generate embbeding** based on normal distribution (default for item emb). Kg emb pretrained with trans-E, we get a faster loss convergence with metrics a little bit higher . We still use the original code to read local embedding files,  you should also generate three embedding files, of which the format is not different from [the original]( https://github.com/BetsyHJ/KSR/tree/master/data ).
+- It's not necessary to pretrain embbeding (emb can be updated when backwarding, different from the original code) . Thus, we **randomly generate embbeding** based on normal distribution (default for item emb). Kg emb pretrained with trans-E, we get a faster loss convergence with metrics a little bit higher . We still use the original code to read local embedding files,  you should also generate three embedding files, of which the format is not different from [the original](https://github.com/RUCDM/KSR/blob/master/data/the format of KSR input.txt) 
 - To speed up, we only train when epoch <= 40; model is saved when epoch > 50 and it obtains the highest MRR@20. You can alter this in the method "fit".
 - As the original version filters out items in test data which not exist in train data (the same way as GRU4rec), we follow it. But metrics is divided by the sum of  unfiltered test sessions. You can revise it in evaluation.py.
+
+### Input Format
+
+##### sess data:
+
+The first line is "SessionId,ItemId". Id begins with 0.
+
+> SID+','+IID
+
+##### item_id -> kg_id
+
+ItemId is mapped to entityId in kg for consistency. No header. 
+
+> IID+'\t'+EID
 
 ### Args
 
