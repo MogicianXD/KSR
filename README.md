@@ -54,7 +54,7 @@ optional arguments:
 
 --argument            use the method called "data argument" if true
 
---retrain             use kg emb, the pretrained output of OpenKE (trans-E)
+--pretrain             use kg emb, the pretrained output of OpenKE (trans-E)
 
 --reload              restore saved params if true
 

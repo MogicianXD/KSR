@@ -6,7 +6,7 @@ import torch.nn.functional as F
 import pandas as pd
 import pickle
 import os
-from evaluation import evaluate_sessions
+from evaluation import *
 
 
 class KVMN(nn.Module):
@@ -55,7 +55,7 @@ class KVMN(nn.Module):
         self.MN_ea = nn.Linear(self.KBembedding, self.MN_dims)
 
         self.gru = nn.GRUCell(self.embedding, self.layers[0])
-        # self.gru2 = nn.GRUCell(self.layers[0], self.layers[0])
+        self.gru2 = nn.GRUCell(self.layers[0], self.layers[0])
 
         self.mlp1 = nn.Linear(self.layers[-1], self.out_dim)
 
@@ -84,13 +84,14 @@ class KVMN(nn.Module):
 
         self.E = nn.Parameter(torch.tensor(ItemE))  # shape : self.init_weights((self.n_items, self.embedding))
 
-        self.KBE = nn.Parameter(torch.tensor(ItemKBE).to(self.device))
+        self.KBE = nn.Parameter(torch.tensor(ItemKBE))
         self.MergeE = nn.Parameter(torch.tensor(np.hstack([ItemE, ItemKBE])))
         ### add memory network
-        self.r_matrix = nn.Parameter(torch.tensor(r_matrix).to(self.device))
-        self.mlp2 = nn.Linear(ItemKBE.shape[1] + ItemE.shape[1], self.out_dim)
+        self.r_matrix = nn.Parameter(torch.tensor(r_matrix))
+        # self.mlp2 = nn.Linear(ItemKBE.shape[1] + ItemE.shape[1], self.out_dim)
+        self.mlp2 = nn.Linear(self.out_dim, self.n_items)
 
-        self.constant_ones = torch.ones((self.MN_dims,)).to(self.device)
+        self.constant_ones = torch.ones((self.MN_dims,), device=self.device)
 
         self.to(self.device)
 
@@ -137,9 +138,7 @@ class KVMN(nn.Module):
         return y, h, MN
 
     def forward(self, X, Y, predict=False):
-        X.to(self.device)
-        Y.to(self.device)
-        MN = torch.zeros((X.shape[0], self.MN_nfactors, self.MN_dims)).to(self.device)
+        MN = torch.zeros((X.shape[0], self.MN_nfactors, self.MN_dims), device=self.device)
         # self.E[0] = 0
         mask = torch.ones_like(self.E)
         mask[0] = 0
@@ -149,26 +148,26 @@ class KVMN(nn.Module):
         y_sum = 0
         for t in range(0, X.shape[1]):
             y, h, MN = self.model_step(Sx[:, t, :], X[:, t], h, MN)
-            # h2 = self.gru2(y, h2)
-            y_sum += y
-        y = y_sum / X.shape[1]
-        # y = h2
+            h2 = self.gru2(y, h2)
+            # y_sum += y
+        # y = y_sum / X.shape[1]
+        y = h2
         if Y is not None:
             # self.MergeE[0] = 0
             mask = torch.ones_like(self.MergeE)
             mask[0] = 0
             # SBy = self.By[Y]
             if predict:
-                # y = F.softmax(self.mlp2(y), dim=1)
-                Sy = (self.MergeE * mask)
-                Sy = self.hidden_activation(self.mlp2(Sy))  # b * n * out_dim
-                y = F.softmax(torch.matmul(y, Sy.transpose(-1, -2)), dim=1)
+                y = F.softmax(self.mlp2(y), dim=1)
+                # Sy = (self.MergeE * mask)
+                # Sy = self.hidden_activation(self.mlp2(Sy))  # b * n * out_dim
+                # y = F.softmax(torch.matmul(y, Sy.transpose(-1, -2)), dim=1)
             else:
-                # y = F.log_softmax(self.mlp2(y), dim=1)
+                y = F.log_softmax(self.mlp2(y), dim=1)
                 # y = torch.matmul(Sy, y.unsqueeze(2)) # b * n * 1
-                Sy = (self.MergeE * mask)[Y]
-                Sy = self.hidden_activation(self.mlp2(Sy))  # b * n * out_dim
-                y = F.log_softmax(torch.matmul(y, Sy.transpose(-1, -2)), dim=1)
+                # Sy = (self.MergeE * mask)[Y]
+                # Sy = self.hidden_activation(self.mlp2(Sy))  # b * n * out_dim
+                # y = F.log_softmax(torch.matmul(y, Sy.transpose(-1, -2)), dim=1)
             return y
         else:  ## output user embedding
             if predict == True:
@@ -222,8 +221,8 @@ class KVMN(nn.Module):
             self.load_state_dict(torch.load(savepath))
 
         if only_eval:
-            print('valid', evaluate_sessions(self, valid, data, sum=valid_sum))
-            print('test', evaluate_sessions(self, test, data, sum=test_sum))
+            print('valid', evaluate_sessions_gpu(self, valid, data, sum=valid_sum))
+            print('test', evaluate_sessions_gpu(self, test, data, sum=test_sum))
             return
 
         self.optimizer = optim.Adam(self.parameters(), lr=self.learning_rate)
@@ -254,9 +253,10 @@ class KVMN(nn.Module):
                 # else:
                 #     y = out_idx
 
-                Y_pred = self.forward(torch.LongTensor(in_idx), torch.LongTensor(range(len(itemids))))
+                Y_pred = self.forward(torch.tensor(in_idx, device=self.device, dtype=torch.int64),
+                                      torch.tensor(range(len(itemids)), device=self.device, dtype=torch.int64))
                 # cost = self.bpr(Y_pred.gather(1, torch.tensor(y).to(self.device)))
-                cost = F.nll_loss(Y_pred, target=torch.tensor(out_idx).to(self.device))
+                cost = F.nll_loss(Y_pred, target=torch.tensor(out_idx, device=self.device))
                 if np.isnan(cost.item()):
                     print(str(epoch) + ': NaN error!')
                     self.error_during_train = True
@@ -271,15 +271,15 @@ class KVMN(nn.Module):
                 return
             print('Epoch{}\tloss: {:.6f}'.format(epoch, avgc))
 
-            if epoch > 40:
-                res = evaluate_sessions(self, valid, data, sum=valid_sum)
+            if epoch >= 40:
+                res = evaluate_sessions_gpu(self, valid, data, sum=valid_sum)
                 if savepath and epoch > 50 and best_mrr < res[1][-1]:
                     best_mrr = res[1][-1]
                     best_epoch = epoch
                     # torch.save(self.state_dict(), savepath)
                 print('best_epoch', best_epoch)
                 print('valid', res)
-                print('test', evaluate_sessions(self, test, data, sum=test_sum))
+                print('test', evaluate_sessions_gpu(self, test, data, sum=test_sum))
 
     def predict_next_batch(self, session_ids, input_item_ids, predict_for_item_ids=None, batch=100):
         '''
@@ -309,12 +309,13 @@ class KVMN(nn.Module):
         self.eval()
         with torch.no_grad():
             # in_idxs = self.itemidmap[input_item_ids]
-            in_idxs = torch.LongTensor(input_item_ids)
+            in_idxs = torch.tensor(input_item_ids, device=self.device, dtype=torch.int64)
             if predict_for_item_ids is not None:
-                iIdxs = torch.LongTensor(self.itemidmap[predict_for_item_ids])
+                iIdxs = torch.tensor(self.itemidmap[predict_for_item_ids], device=self.device, dtype=torch.int64)
                 yhat = self(in_idxs, iIdxs, predict=True)
-                preds = np.asarray(yhat.cpu()).T
-                return pd.DataFrame(data=preds)
+                # preds = np.asarray(yhat.cpu()).T
+                # return pd.DataFrame(data=preds)
+                return yhat
 
     def generate_neg_samples(self, pop, length):
         if self.sample_alpha:

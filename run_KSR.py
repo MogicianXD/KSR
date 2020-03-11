@@ -17,9 +17,9 @@ np.random.seed(666)
 
 def parse_args():
     parser = argparse.ArgumentParser(description="Knowledge-Enhanced Sequential Representaion.")
-    parser.add_argument('--data', default='year15',
+    parser.add_argument('--data', default='m15cat',
                         help='dataset folder name under ../benchmarks')
-    parser.add_argument('--type', default='B',
+    parser.add_argument('--type', default='A',
                         help='our dataset is divided')
     parser.add_argument('--epochs', type=int, default=5000,
                         help='Number of epochs.')
@@ -37,9 +37,9 @@ def parse_args():
                         help='Specify activation function: sigmoid, relu, tanh, identity')
     parser.add_argument('--momentum', type=float, default=0.05,
                         help='Momentum as hyperprameter.')
-    parser.add_argument('--argument', action='store_true',
-                        help='use the method called "data argument" if true')
-    parser.add_argument('--retrain', action='store_true',
+    parser.add_argument('--augment', action='store_true',
+                        help='use the method called "data augmentation" if true')
+    parser.add_argument('--pretrain', action='store_true',
                         help='use kg emb, the pretrained output of OpenKE (trans-E)')
     parser.add_argument('--reload', action='store_true',
                         help='restore saved params if true')
@@ -56,7 +56,7 @@ def parse_args():
 
 args = parse_args()
 if not args.savepath:
-    args.savepath = args.data + args.type + '_' + ('retrain' if args.retrain else 'pretrain') + '.model'
+    args.savepath = args.data + args.type + '_' + ('pretrain' if args.pretrain else 'retrain') + '.model'
 print(args)
 import os
 
@@ -114,7 +114,7 @@ def read_r_matrix(filename):
     return np.array(r_matrix, dtype=np.float32)
 
 
-def process(data, argument=False):
+def process(data, augment=False):
     data.columns = ['SessionId', 'OldItemId']
     data['Time'] = data.index
     data = pd.merge(data, reindex_dic, on='OldItemId')
@@ -130,7 +130,7 @@ def process(data, argument=False):
         # l = [sid] + s[1].ItemId.tolist() + [0] * (max_len - len(s[1]))
         # prepare.append(l)
         l = s[1].ItemId.tolist()
-        for k in range(1, len(l)) if argument else [len(l) - 1]:
+        for k in range(1, len(l)) if augment else [len(l) - 1]:
             for i in l[:k]:
                 prepare.append([sid, i])
             for i in range(max_len - 1 - k):
@@ -191,15 +191,15 @@ if __name__ == '__main__':
     valid = valid[valid["ItemId"].isin(items)]
     test = test[test["ItemId"].isin(items)]
 
-    argument = args.argument
+    augment = args.augment
 
     valid = valid[valid.SessionId.isin((valid.groupby('SessionId').size() > 1).index)]
     test = test[test.SessionId.isin((test.groupby('SessionId').size() > 1).index)]
-    train = process(train, argument)
-    valid = process(valid, argument)
-    test = process(test, argument)
-    # train = load('train', process, train, argument)
-    # test = load('test', process, test, argument)
+    train = process(train, augment)
+    valid = process(valid, augment)
+    test = process(test, augment)
+    # train = load('train', process, train, augment)
+    # test = load('test', process, test, augment)
 
     # Reproducing results from "Session-based Recommendations with Recurrent Neural Networks" on RSC15 (http://arxiv.org/abs/1511.06939)
 
@@ -210,5 +210,5 @@ if __name__ == '__main__':
                       MN_dims=r_matrix.shape[1], )
 
     gru.fit(train, ItemEmbedding, KBItemEmbedding, r_matrix, n_epochs=args.epochs,
-            retrain=args.retrain, only_eval=args.eval, valid=valid, test=test,
+            retrain=not args.pretrain, only_eval=args.eval, valid=valid, test=test,
             valid_sum=valid_sum, test_sum=test_sum, savepath=args.savepath, reload=args.reload)
