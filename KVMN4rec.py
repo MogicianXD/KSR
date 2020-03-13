@@ -55,7 +55,7 @@ class KVMN(nn.Module):
         self.MN_ea = nn.Linear(self.KBembedding, self.MN_dims)
 
         self.gru = nn.GRUCell(self.embedding, self.layers[0])
-        self.gru2 = nn.GRUCell(self.layers[0], self.layers[0])
+        self.gru2 = nn.GRUCell(self.out_dim, self.out_dim)
 
         self.mlp1 = nn.Linear(self.layers[-1], self.out_dim)
 
@@ -84,10 +84,10 @@ class KVMN(nn.Module):
 
         self.E = nn.Parameter(torch.tensor(ItemE))  # shape : self.init_weights((self.n_items, self.embedding))
 
-        self.KBE = nn.Parameter(torch.tensor(ItemKBE))
+        self.KBE = torch.tensor(ItemKBE, device=self.device)
         self.MergeE = nn.Parameter(torch.tensor(np.hstack([ItemE, ItemKBE])))
         ### add memory network
-        self.r_matrix = nn.Parameter(torch.tensor(r_matrix))
+        self.r_matrix = torch.tensor(r_matrix, device=self.device)
         # self.mlp2 = nn.Linear(ItemKBE.shape[1] + ItemE.shape[1], self.out_dim)
         self.mlp2 = nn.Linear(self.out_dim, self.n_items)
 
@@ -148,24 +148,29 @@ class KVMN(nn.Module):
         y_sum = 0
         for t in range(0, X.shape[1]):
             y, h, MN = self.model_step(Sx[:, t, :], X[:, t], h, MN)
-            h2 = self.gru2(y, h2)
-            # y_sum += y
-        # y = y_sum / X.shape[1]
-        y = h2
+            # h2 = self.gru2(y, h2)
+            y_sum += y
+        y = y_sum / X.shape[1]
+        # y = h2
         if Y is not None:
             # self.MergeE[0] = 0
-            mask = torch.ones_like(self.MergeE)
-            mask[0] = 0
             # SBy = self.By[Y]
             if predict:
                 y = F.softmax(self.mlp2(y), dim=1)
-                # Sy = (self.MergeE * mask)
+
+                # Sy = self.MergeE
                 # Sy = self.hidden_activation(self.mlp2(Sy))  # b * n * out_dim
                 # y = F.softmax(torch.matmul(y, Sy.transpose(-1, -2)), dim=1)
             else:
+                # mask = torch.ones_like(self.MergeE)
+                # mask[0] = 0
                 y = F.log_softmax(self.mlp2(y), dim=1)
-                # y = torch.matmul(Sy, y.unsqueeze(2)) # b * n * 1
+
                 # Sy = (self.MergeE * mask)[Y]
+                # Sy = self.hidden_activation(self.mlp2(Sy))
+                # y = torch.matmul(y, Sy.transpose(-1, -2)) # b * n * 1
+
+                # Sy = (self.MergeE * mask)
                 # Sy = self.hidden_activation(self.mlp2(Sy))  # b * n * out_dim
                 # y = F.log_softmax(torch.matmul(y, Sy.transpose(-1, -2)), dim=1)
             return y
@@ -248,10 +253,10 @@ class KVMN(nn.Module):
 
                 # For bpr, modify "forward" not only the below
 
-                # if self.n_sample > 0:
-                #     y = np.hstack([out_idx[:, np.newaxis], neg_samples])
-                # else:
-                #     y = out_idx
+                if self.n_sample > 0:
+                    y = np.hstack([out_idx[:, np.newaxis], neg_samples])
+                else:
+                    y = out_idx
 
                 Y_pred = self.forward(torch.tensor(in_idx, device=self.device, dtype=torch.int64),
                                       torch.tensor(range(len(itemids)), device=self.device, dtype=torch.int64))

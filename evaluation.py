@@ -91,8 +91,8 @@ def evaluate_sessions_gpu(pr, test_data, train_data, sum, cut_off=20, session_ke
         # preds += 1e-8 * np.random.rand(len(preds))  # Breaking up ties
         # preds.apply(lambda x: x + 1e-8)
 
-        # preds = preds[:, 1:]
-        ranks = (preds.t() > torch.diag(preds[:, iid])).sum(0) + 1
+        preds = preds[:, 1:]
+        ranks = (preds.t() > torch.diag(preds[:, iid-1])).sum(0) + 1
         for k in [0, 1, 2]:
             rank_ok = (ranks <= cut_off[k])
             # pred_res += list(rank_ok)

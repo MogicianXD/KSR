@@ -66,9 +66,9 @@ dataset_path = '../benchmarks/kg_{}/{}/'.format(args.data, args.type)
 train_data = dataset_path + 'train.csv'
 valid_data = dataset_path + 'valid.csv'
 test_data = dataset_path + 'test.csv'
-File_ItemEmbedding = dataset_path + 'item_factors.txt'  # sys.argv[1]
-File_KBItemEmbedding = dataset_path + 'e_emb.txt'  # sys.argv[2]
-File_r_matrix = dataset_path + 'r_emb.txt'  # sys.argv[3]
+File_ItemEmbedding = dataset_path + 'item_factors.txt'
+File_KBItemEmbedding = dataset_path + 'e_emb.txt'
+File_r_matrix = dataset_path + 'r_emb.txt'
 
 size_dict = {'year20': {'A': 52126, 'B': 94794},
              'year15': {'A': 50531, 'B': 91701},
