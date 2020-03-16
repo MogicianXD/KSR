@@ -88,8 +88,8 @@ class KVMN(nn.Module):
         self.MergeE = nn.Parameter(torch.tensor(np.hstack([ItemE, ItemKBE])))
         ### add memory network
         self.r_matrix = torch.tensor(r_matrix, device=self.device)
-        # self.mlp2 = nn.Linear(ItemKBE.shape[1] + ItemE.shape[1], self.out_dim)
-        self.mlp2 = nn.Linear(self.out_dim, self.n_items)
+        self.mlp2 = nn.Linear(ItemKBE.shape[1] + ItemE.shape[1], self.out_dim)
+        # self.mlp2 = nn.Linear(self.out_dim, self.n_items)
 
         self.constant_ones = torch.ones((self.MN_dims,), device=self.device)
 
@@ -156,23 +156,19 @@ class KVMN(nn.Module):
             # self.MergeE[0] = 0
             # SBy = self.By[Y]
             if predict:
-                y = F.softmax(self.mlp2(y), dim=1)
+                # y = F.softmax(self.mlp2(y), dim=1)
 
-                # Sy = self.MergeE
-                # Sy = self.hidden_activation(self.mlp2(Sy))  # b * n * out_dim
-                # y = F.softmax(torch.matmul(y, Sy.transpose(-1, -2)), dim=1)
+                Sy = self.MergeE
+                Sy = self.hidden_activation(self.mlp2(Sy))  # b * n * out_dim
+                y = F.softmax(torch.matmul(y, Sy.transpose(-1, -2)), dim=1)
             else:
-                # mask = torch.ones_like(self.MergeE)
-                # mask[0] = 0
-                y = F.log_softmax(self.mlp2(y), dim=1)
+                # y = F.log_softmax(self.mlp2(y), dim=1)
 
-                # Sy = (self.MergeE * mask)[Y]
-                # Sy = self.hidden_activation(self.mlp2(Sy))
-                # y = torch.matmul(y, Sy.transpose(-1, -2)) # b * n * 1
-
-                # Sy = (self.MergeE * mask)
-                # Sy = self.hidden_activation(self.mlp2(Sy))  # b * n * out_dim
-                # y = F.log_softmax(torch.matmul(y, Sy.transpose(-1, -2)), dim=1)
+                mask = torch.ones_like(self.MergeE)
+                mask[0] = 0
+                Sy = (self.MergeE * mask)
+                Sy = self.hidden_activation(self.mlp2(Sy))  # b * n * out_dim
+                y = F.log_softmax(torch.matmul(y, Sy.transpose(-1, -2)), dim=1)
             return y
         else:  ## output user embedding
             if predict == True:
