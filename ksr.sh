@@ -1,4 +1,4 @@
-nohup python -u run_KSR.py --data m15cat --type A --epochs 300 --lr 0.002 --cuda 3 --pretrain > m15A0 2>&1 &
+nohup python -u run_KSR.py --data m15cat --type A --epochs 300 --lr 0.002 --cuda 5 --pretrain > m15A0 2>&1 &
 nohup python -u run_KSR.py --data m15cat --type B --epochs 300 --lr 0.002 --cuda 5 --pretrain > m15B0 2>&1 &
 
 #nohup python -u run_KSR.py --data m15cat --type A --epochs 300 --lr 0.002 --cuda 4 > m15A3 2>&1 &

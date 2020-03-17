@@ -155,19 +155,17 @@ class KVMN(nn.Module):
         if Y is not None:
             # self.MergeE[0] = 0
             # SBy = self.By[Y]
+            mask = torch.ones_like(self.MergeE)
+            mask[0] = 0
+            Sy = (self.MergeE * mask)
+            Sy = self.hidden_activation(self.mlp2(Sy))  # b * n * out_dim
             if predict:
                 # y = F.softmax(self.mlp2(y), dim=1)
 
-                Sy = self.MergeE
-                Sy = self.hidden_activation(self.mlp2(Sy))  # b * n * out_dim
                 y = F.softmax(torch.matmul(y, Sy.transpose(-1, -2)), dim=1)
             else:
                 # y = F.log_softmax(self.mlp2(y), dim=1)
 
-                mask = torch.ones_like(self.MergeE)
-                mask[0] = 0
-                Sy = (self.MergeE * mask)
-                Sy = self.hidden_activation(self.mlp2(Sy))  # b * n * out_dim
                 y = F.log_softmax(torch.matmul(y, Sy.transpose(-1, -2)), dim=1)
             return y
         else:  ## output user embedding
@@ -226,14 +224,15 @@ class KVMN(nn.Module):
             print('test', evaluate_sessions_gpu(self, test, data, sum=test_sum))
             return
 
+        if resample == True:
+            if self.n_sample:
+                session_samples = self.generate_neg_samples_sessionBased(data, pop)
+
         self.optimizer = optim.Adam(self.parameters(), lr=self.learning_rate)
 
         best_mrr, best_epoch = 0, 0
         for epoch in range(n_epochs):
             self.train()
-            if resample == True:
-                if self.n_sample:
-                    session_samples = self.generate_neg_samples_sessionBased(data, pop)
             c = []
             session_idx_arr = np.random.permutation(len(data[self.session_key].unique()))
             i = 0
@@ -249,10 +248,10 @@ class KVMN(nn.Module):
 
                 # For bpr, modify "forward" not only the below
 
-                if self.n_sample > 0:
-                    y = np.hstack([out_idx[:, np.newaxis], neg_samples])
-                else:
-                    y = out_idx
+                # if self.n_sample > 0:
+                #     y = np.hstack([out_idx[:, np.newaxis], neg_samples])
+                # else:
+                #     y = out_idx
 
                 Y_pred = self.forward(torch.tensor(in_idx, device=self.device, dtype=torch.int64),
                                       torch.tensor(range(len(itemids)), device=self.device, dtype=torch.int64))

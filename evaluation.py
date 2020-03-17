@@ -97,7 +97,7 @@ def evaluate_sessions_gpu(pr, test_data, train_data, sum, cut_off=20, session_ke
             rank_ok = (ranks <= cut_off[k])
             # pred_res += list(rank_ok)
             recall[k] += rank_ok.sum().item()
-            mrr[k] += (1.0 / ranks[rank_ok]).sum().item()
+            mrr[k] += (1.0 / ranks[rank_ok].float()).sum().item()
 
         # for j in range(len(iid)):
         #     if iid[j] == 0:
