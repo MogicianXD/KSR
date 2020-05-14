@@ -84,8 +84,8 @@ class KVMN(nn.Module):
 
         self.E = nn.Parameter(torch.tensor(ItemE))  # shape : self.init_weights((self.n_items, self.embedding))
 
-        self.KBE = torch.tensor(ItemKBE, device=self.device)
-        self.MergeE = nn.Parameter(torch.tensor(np.hstack([ItemE, ItemKBE])))
+        self.KBE = nn.Parameter(torch.tensor(ItemKBE))
+        # self.MergeE = nn.Parameter(torch.tensor(np.hstack([ItemE, ItemKBE])))
         ### add memory network
         self.r_matrix = torch.tensor(r_matrix, device=self.device)
         self.mlp2 = nn.Linear(ItemKBE.shape[1] + ItemE.shape[1], self.out_dim)
@@ -118,7 +118,7 @@ class KVMN(nn.Module):
         y = h
         ### add memory network part
         ## write operator
-        mask = torch.ones_like(self.KBE)
+        mask = torch.ones_like(self.KBE, device=self.device)
         mask[0] = 0
         KBItem = (self.KBE * mask)[X]  # shape:b*KBembedding
         EA = self.hidden_activation(self.MN_ea(KBItem))  # shape:b*d
@@ -140,7 +140,7 @@ class KVMN(nn.Module):
     def forward(self, X, Y, predict=False):
         MN = torch.zeros((X.shape[0], self.MN_nfactors, self.MN_dims), device=self.device)
         # self.E[0] = 0
-        mask = torch.ones_like(self.E)
+        mask = torch.ones_like(self.E, device=self.device)
         mask[0] = 0
         Sx = (self.E * mask)[X]  # b*l*d
         h = None
@@ -155,9 +155,10 @@ class KVMN(nn.Module):
         if Y is not None:
             # self.MergeE[0] = 0
             # SBy = self.By[Y]
-            mask = torch.ones_like(self.MergeE)
+            MergeE = torch.cat((self.E, self.KBE), 1)
+            mask = torch.ones_like(MergeE, device=self.device)
             mask[0] = 0
-            Sy = (self.MergeE * mask)
+            Sy = (MergeE * mask)
             Sy = self.hidden_activation(self.mlp2(Sy))  # b * n * out_dim
             if predict:
                 # y = F.softmax(self.mlp2(y), dim=1)
@@ -271,9 +272,9 @@ class KVMN(nn.Module):
                 return
             print('Epoch{}\tloss: {:.6f}'.format(epoch, avgc))
 
-            if epoch >= 40:
+            if epoch >= 20:
                 res = evaluate_sessions_gpu(self, valid, data, sum=valid_sum)
-                if savepath and epoch > 50 and best_mrr < res[1][-1]:
+                if savepath and best_mrr < res[1][-1]:
                     best_mrr = res[1][-1]
                     best_epoch = epoch
                     # torch.save(self.state_dict(), savepath)

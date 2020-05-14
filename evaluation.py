@@ -108,13 +108,13 @@ def evaluate_sessions_gpu(pr, test_data, train_data, sum, cut_off=20, session_ke
         #         if rank <= cut_off[k]:
         #             recall[k] += 1
         #             mrr[k] += 1.0 / rank
-        # evalutation_point_count += len(iid)
+        evalutation_point_count += len(iid)
         i += batch_size
 
 
 
     # print("ranks mean: ", np.mean(ranks))
-    return np.array(recall, dtype=float) / sum, np.array(mrr, dtype=float) / sum
+    return np.array(recall, dtype=float) / evalutation_point_count, np.array(mrr, dtype=float) / evalutation_point_count
 
 def evaluate_sessions_minibatch(pr, test_data, train_data, sum, cut_off=20, session_key='SessionId', item_key='ItemId',
                       time_key='Time', batch_size=100):
